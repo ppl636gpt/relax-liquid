@@ -1,0 +1,203 @@
+:root {
+  color-scheme: light;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  --panel-bg: rgba(244, 252, 253, 0.74);
+  --panel-border: rgba(255, 255, 255, 0.48);
+  --panel-shadow: 0 24px 80px rgba(30, 61, 74, 0.2);
+  --text: #113640;
+  --muted: rgba(17, 54, 64, 0.7);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  width: 100%;
+  min-height: 100%;
+}
+
+body {
+  background: #eef6f7;
+  overflow: hidden;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+.shell,
+.scene-shell,
+.scene-host {
+  width: 100%;
+  height: 100dvh;
+}
+
+.scene-shell {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, #f9fcfc 0%, #edf5f8 100%);
+}
+
+.scene-host {
+  position: relative;
+  touch-action: none;
+  cursor: grab;
+}
+
+.scene-host:active {
+  cursor: grabbing;
+}
+
+.scene-host canvas,
+.scene-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.settings-toggle {
+  position: absolute;
+  right: 20px;
+  top: 20px;
+  z-index: 12;
+  border: 1px solid rgba(255, 255, 255, 0.48);
+  background: rgba(255, 255, 255, 0.28);
+  color: var(--text);
+  backdrop-filter: blur(22px);
+  box-shadow: 0 12px 42px rgba(55, 97, 113, 0.16);
+  border-radius: 999px;
+  padding: 0.7rem 1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.settings-panel {
+  position: absolute;
+  inset: auto 16px 16px auto;
+  width: min(360px, calc(100vw - 32px));
+  max-height: calc(100dvh - 96px);
+  overflow: auto;
+  z-index: 10;
+  border-radius: 28px;
+  padding: 1rem;
+  color: var(--text);
+  border: 1px solid var(--panel-border);
+  background: var(--panel-bg);
+  backdrop-filter: blur(28px) saturate(120%);
+  box-shadow: var(--panel-shadow);
+  transform: translateY(calc(100% + 24px));
+  transition: transform 260ms ease;
+}
+
+.settings-panel.is-open {
+  transform: translateY(0);
+}
+
+.panel-header {
+  display: grid;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+.panel-header h1 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.status {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.field-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.field,
+.checkbox {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 0.9rem;
+}
+
+.field span,
+.checkbox span {
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.field input,
+.field select,
+.upload-field input {
+  width: 100%;
+  border-radius: 16px;
+  border: 1px solid rgba(113, 168, 180, 0.28);
+  padding: 0.72rem 0.9rem;
+  background: rgba(255, 255, 255, 0.55);
+  color: var(--text);
+}
+
+.field input[type='range'] {
+  padding: 0;
+}
+
+.field input[type='color'] {
+  min-height: 48px;
+}
+
+.checkbox {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+}
+
+.checkbox input {
+  width: 18px;
+  height: 18px;
+}
+
+.reset-button {
+  width: 100%;
+  border: none;
+  border-radius: 18px;
+  padding: 0.95rem 1rem;
+  background: linear-gradient(135deg, rgba(72, 201, 212, 0.9), rgba(111, 160, 240, 0.85));
+  color: white;
+  box-shadow: 0 12px 26px rgba(72, 201, 212, 0.28);
+}
+
+@media (max-width: 720px) {
+  .settings-toggle {
+    right: 14px;
+    top: 14px;
+    padding: 0.6rem 0.86rem;
+  }
+
+  .settings-panel {
+    inset: auto 12px 12px 12px;
+    width: auto;
+    max-height: min(72dvh, 720px);
+    border-radius: 24px;
+  }
+
+  .field-group {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
