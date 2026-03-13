@@ -50,6 +50,11 @@ export class PixiSceneRenderer {
     'large-star': Texture.from(createParticleTexture('large', 'star')),
     'large-heart': Texture.from(createParticleTexture('large', 'heart')),
   }
+  private readonly kindTint: Record<string, number> = {
+    glitter: 0xff3b3b,
+    medium: 0x3ccf4a,
+    large: 0xff7ac4,
+  }
 
   private viewportWidth = 1
   private viewportHeight = 1
@@ -110,6 +115,7 @@ export class PixiSceneRenderer {
         particle.kind === 'large' ? `large-${particle.variant}` : particle.kind
       const sprite = new Sprite(this.particleTextures[textureKey])
       sprite.anchor.set(0.5)
+      sprite.tint = this.kindTint[particle.kind] ?? 0xffffff
       this.particleLayer.addChild(sprite)
       this.particleSprites.set(particle.id, sprite)
     }
@@ -144,14 +150,17 @@ export class PixiSceneRenderer {
         continue
       }
 
-      const depthScale = lerp(0.76, 1.24, particle.z)
-      const sparkleBase = particle.kind === 'glitter' ? 0.08 : particle.kind === 'medium' ? 0.22 : 0.48
-      const sparkle = 1 + Math.sin(frame.time * (1.1 + particle.z) + particle.sparklePhase + particle.rotation * 4) * sparkleBase
+     const depthScale = lerp(0.76, 1.24, particle.z)
+     const sparkleBase = particle.kind === 'glitter' ? 0.08 : particle.kind === 'medium' ? 0.22 : 0.48
+     const sparkle = 1 + Math.sin(frame.time * (1.1 + particle.z) + particle.sparklePhase + particle.rotation * 4) * sparkleBase
 
-      sprite.position.set(particle.x, particle.y)
-      sprite.rotation = particle.rotation
-      sprite.scale.set((particle.size / sprite.texture.width) * depthScale * sparkle)
-      sprite.alpha = lerp(0.24, 0.92, particle.z) * sparkle
+     sprite.position.set(particle.x, particle.y)
+     sprite.rotation = particle.rotation
+      const widthScale = (particle.size / sprite.texture.width) * depthScale * sparkle
+      const heightScale = (particle.size / sprite.texture.height) * depthScale
+      sprite.scale.x = widthScale
+      sprite.scale.y = heightScale
+     sprite.alpha = lerp(0.24, 0.92, particle.z) * sparkle
     }
 
     this.rippleGraphics.clear()

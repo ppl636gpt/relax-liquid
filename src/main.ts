@@ -41,7 +41,7 @@ appRoot.innerHTML = `
         <div class="field-group">
           <label class="field">
             <span>Глиттер</span>
-            <input id="glitter-count" type="range" min="120" max="1400" step="20" value="900" />
+            <input id="glitter-count" type="range" min="120" max="7500" step="100" value="4500" />
           </label>
           <label class="field">
             <span>Скорость глиттера</span>
@@ -52,7 +52,7 @@ appRoot.innerHTML = `
         <div class="field-group">
           <label class="field">
             <span>Средние частицы</span>
-            <input id="medium-count" type="range" min="40" max="420" step="10" value="220" />
+            <input id="medium-count" type="range" min="40" max="1800" step="50" value="1100" />
           </label>
           <label class="field">
             <span>Скорость средних</span>
@@ -63,7 +63,7 @@ appRoot.innerHTML = `
         <div class="field-group">
           <label class="field">
             <span>Крупные формы</span>
-            <input id="large-count" type="range" min="8" max="72" step="2" value="36" />
+            <input id="large-count" type="range" min="8" max="320" step="4" value="180" />
           </label>
           <label class="field">
             <span>Скорость крупных</span>
