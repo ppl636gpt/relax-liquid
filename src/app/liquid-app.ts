@@ -134,7 +134,7 @@ export class LiquidApp {
   destroy(): void {
     this.orientationLock.unlock()
     this.tiltAdapter.destroy()
-    this.fluidField.setTiltBias(0, 0)
+    this.fluidField.setGravity(0, 0)
     this.pauseScene()
     window.removeEventListener('resize', this.applySize)
     window.removeEventListener('pageshow', this.handlePageShow)
@@ -276,7 +276,7 @@ export class LiquidApp {
       this.feedback.setEnabled(this.settings.audioEnabled)
       this.motion.stop()
       this.tiltAdapter.stop()
-      this.fluidField.setTiltBias(0, 0)
+      this.fluidField.setGravity(0, 0)
       this.persist()
       this.updateStatus()
     })
@@ -320,7 +320,7 @@ export class LiquidApp {
       this.settings.motionEnabled = false
       this.motion.stop()
       this.tiltAdapter.stop()
-      this.fluidField.setTiltBias(0, 0)
+    this.fluidField.setGravity(0, 0)
       return false
     }
 
