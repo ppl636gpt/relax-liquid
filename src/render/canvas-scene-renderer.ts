@@ -92,31 +92,22 @@ export class CanvasSceneRenderer {
     }
 
     for (const particle of frame.particles) {
-      const depthScale = lerp(0.75, 1.04, particle.z)
-      const baseHeight = particle.size * depthScale
-      const widthPulse = 1 + Math.sin(frame.time * (1 + particle.z) + particle.sparklePhase + particle.rotation * 4) * (particle.kind === 'large' ? 0.32 : particle.kind === 'medium' ? 0.18 : 0.08)
-      const radiusX = baseHeight * widthPulse
-      const radiusY = baseHeight
+      const sparkle = 1 + Math.sin(frame.time * (1 + particle.z) + particle.sparklePhase + particle.rotation * 4) * (particle.kind === 'large' ? 0.4 : particle.kind === 'medium' ? 0.2 : 0.06)
+      const radius = particle.size * lerp(0.75, 1.2, particle.z) * sparkle
       context.save()
       context.translate(particle.x, particle.y)
       context.rotate(particle.rotation)
-      context.globalAlpha = lerp(0.2, 0.95, particle.z)
-      if (particle.kind === 'glitter') {
-        context.fillStyle = 'rgba(255, 80, 80, 0.84)'
-      } else if (particle.kind === 'medium') {
-        context.fillStyle = 'rgba(60, 208, 90, 0.92)'
-      } else {
-        context.fillStyle = 'rgba(255, 140, 220, 0.92)'
-      }
+      context.globalAlpha = lerp(0.2, 0.95, particle.z) * sparkle
+      context.fillStyle = particle.kind === 'glitter' ? 'rgba(255,255,255,0.72)' : particle.kind === 'medium' ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.98)'
       if (particle.kind === 'large') {
         if (particle.variant === 'heart') {
-          this.drawHeart(context, radiusX, radiusY)
+          this.drawHeart(context, radius)
         } else {
-          this.drawStar(context, radiusX, radiusY)
+          this.drawStar(context, radius)
         }
       } else {
         context.beginPath()
-        context.ellipse(0, 0, radiusX, radiusY, 0, 0, Math.PI * 2)
+        context.arc(0, 0, radius, 0, Math.PI * 2)
         context.fill()
       }
       context.restore()
@@ -136,22 +127,22 @@ export class CanvasSceneRenderer {
     return this.canvas
   }
 
-  private drawHeart(context: CanvasRenderingContext2D, width: number, height: number): void {
+  private drawHeart(context: CanvasRenderingContext2D, radius: number): void {
     context.beginPath()
-    context.moveTo(0, height)
-    context.bezierCurveTo(-width * 1.1, height * 0.2, -width * 1.2, -height * 0.7, 0, -height * 0.2)
-    context.bezierCurveTo(width * 1.2, -height * 0.7, width * 1.1, height * 0.2, 0, height)
+    context.moveTo(0, radius)
+    context.bezierCurveTo(-radius * 1.1, radius * 0.2, -radius * 1.2, -radius * 0.7, 0, -radius * 0.2)
+    context.bezierCurveTo(radius * 1.2, -radius * 0.7, radius * 1.1, radius * 0.2, 0, radius)
     context.closePath()
     context.fill()
   }
 
-  private drawStar(context: CanvasRenderingContext2D, width: number, height: number): void {
+  private drawStar(context: CanvasRenderingContext2D, radius: number): void {
     context.beginPath()
     for (let index = 0; index < 10; index += 1) {
-      const currentFactor = index % 2 === 0 ? 1 : 0.48
+      const currentRadius = index % 2 === 0 ? radius : radius * 0.46
       const angle = index * (Math.PI / 5) - Math.PI / 2
-      const x = Math.cos(angle) * width * currentFactor
-      const y = Math.sin(angle) * height * currentFactor
+      const x = Math.cos(angle) * currentRadius
+      const y = Math.sin(angle) * currentRadius
       if (index === 0) {
         context.moveTo(x, y)
       } else {

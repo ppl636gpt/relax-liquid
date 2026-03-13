@@ -4,9 +4,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   liquidColor: '#79d8dc',
   liquidOpacity: 35,
   particleCounts: {
-    glitter: 4500,
-    medium: 1100,
-    large: 180,
+    glitter: 900,
+    medium: 220,
+    large: 36,
   },
   particleSpeed: {
     glitter: 1.35,
