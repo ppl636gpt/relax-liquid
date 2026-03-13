@@ -83,7 +83,7 @@ export class LiquidApp {
   }
 
   private readonly handleTilt = (x: number, y: number) => {
-    this.fluidField.setGravity(-x * 0.003, y * 0.0032)
+    this.fluidField.setGravity(x * 0.003, y * 0.0032)
   }
 
   constructor(
