@@ -102,7 +102,7 @@ export class LiquidApp {
       this.fluidField.setGravity(0, 0)
       return
     }
-    this.fluidField.setGravity(x * 0.003, y * 0.0032)
+    this.fluidField.setGravity(y * 0.003, -x * 0.0032)
   }
 
   private readonly handleDocumentPointerDown = (event: PointerEvent) => {
