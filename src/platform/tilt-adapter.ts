@@ -35,17 +35,19 @@ export class TiltAdapter {
   }
 
   private handleEvent(event: DeviceOrientationEvent): void {
-    const gamma = clamp((event.gamma ?? 0) / 45, -1, 1)
-    const beta = clamp((event.beta ?? 0) / 45, -1, 1)
-    const deltaX = Math.abs(gamma - this.lastX)
-    const deltaY = Math.abs(beta - this.lastY)
+    const gammaRad = (event.gamma ?? 0) * (Math.PI / 180)
+    const betaRad = (event.beta ?? 0) * (Math.PI / 180)
+    const downX = clamp(Math.sin(gammaRad), -1, 1)
+    const downY = clamp(Math.sin(betaRad), -1, 1)
+    const deltaX = Math.abs(downX - this.lastX)
+    const deltaY = Math.abs(downY - this.lastY)
     if (deltaX < 0.005 && deltaY < 0.005) {
       return
     }
 
-    this.lastX = gamma
-    this.lastY = beta
-    this.onTilt?.(gamma, beta)
+    this.lastX = downX
+    this.lastY = downY
+    this.onTilt?.(downX, downY)
   }
 
   start(onTilt: TiltCallback): void {

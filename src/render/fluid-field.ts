@@ -27,8 +27,8 @@ export class FluidField {
   private time = 0
   private waves: Wave[] = []
   private energy = 0
-  private tiltBiasX = 0
-  private tiltBiasY = 0
+  private gravityX = 0
+  private gravityY = 0
 
   resize(width: number, height: number): void {
     this.width = Math.max(1, width)
@@ -100,9 +100,9 @@ export class FluidField {
     }
   }
 
-  setTiltBias(x: number, y: number): void {
-    this.tiltBiasX = clamp(x, -1, 1)
-    this.tiltBiasY = clamp(y, -1, 1)
+  setGravity(x: number, y: number): void {
+    this.gravityX = clamp(x, -0.0035, 0.0035)
+    this.gravityY = clamp(y, -0.0035, 0.0035)
   }
 
   step(dt: number): void {
@@ -122,8 +122,8 @@ export class FluidField {
         const noiseX = Math.sin(this.time * 0.7 + col * 0.32 - row * 0.17) * 0.0009
         const noiseY = Math.cos(this.time * 0.63 - col * 0.18 + row * 0.23) * 0.0012
 
-        this.nextVx[index] = (this.vx[index] * 0.82 + diffuseX * 0.18 + noiseX) * 0.976
-        this.nextVy[index] = (this.vy[index] * 0.84 + diffuseY * 0.16 + noiseY + 0.0008) * 0.981
+        this.nextVx[index] = (this.vx[index] * 0.82 + diffuseX * 0.18 + noiseX + this.gravityX) * 0.976
+        this.nextVy[index] = (this.vy[index] * 0.84 + diffuseY * 0.16 + noiseY + this.gravityY) * 0.981
 
         energyAccumulator += Math.abs(this.nextVx[index]) + Math.abs(this.nextVy[index])
       }
@@ -179,9 +179,6 @@ export class FluidField {
     }
 
     const depth = lerp(0.72, 1.18, z)
-    const biasStrength = 0.28
-    sampleX += this.tiltBiasX * biasStrength
-    sampleY += this.tiltBiasY * biasStrength
     return {
       x: sampleX * depth,
       y: sampleY * depth,
