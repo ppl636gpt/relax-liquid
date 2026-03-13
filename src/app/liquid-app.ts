@@ -97,6 +97,11 @@ export class LiquidApp {
   }
 
   private readonly handleTilt = (x: number, y: number) => {
+    const magnitude = Math.hypot(x, y)
+    if (magnitude < 0.07) {
+      this.fluidField.setGravity(0, 0)
+      return
+    }
     this.fluidField.setGravity(x * 0.003, y * 0.0032)
   }
 
