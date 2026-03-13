@@ -22,8 +22,6 @@ function mergeSettings(saved: Partial<AppSettings> | null): AppSettings {
       ...DEFAULT_SETTINGS.particleSpeed,
       ...saved.particleSpeed,
     },
-    audioPitch: typeof saved.audioPitch === 'number' ? saved.audioPitch : DEFAULT_SETTINGS.audioPitch,
-    audioPulseRate: typeof saved.audioPulseRate === 'number' ? saved.audioPulseRate : DEFAULT_SETTINGS.audioPulseRate,
   }
 }
 

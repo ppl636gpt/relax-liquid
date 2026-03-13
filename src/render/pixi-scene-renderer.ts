@@ -10,7 +10,7 @@ import {
 
 import type { AppSettings, ParticleState } from '../types.ts'
 import { computeCoverRect, hexToNumber, lerp } from '../utils/math.ts'
-import { createLiquidBaseTexture, createParticleTexture, createShimmerTexture, getColorZones } from './particle-art.ts'
+import { createLiquidBaseTexture, createParticleTexture, createShimmerTexture } from './particle-art.ts'
 
 interface PixiParticle extends ParticleState {}
 
@@ -138,11 +138,10 @@ export class PixiSceneRenderer {
         continue
       }
 
-      const colors = getColorZones(particle)
-      const signature = `${particle.kind}:${particle.shape}:${colors.join('|')}`
+      const signature = `${particle.kind}:${particle.shape}:${particle.color}`
       const previousSignature = this.particleTextureSignatures.get(particle.id)
       if (signature !== previousSignature) {
-        sprite.texture = this.getTexture(signature, particle.kind, particle.shape, colors)
+        sprite.texture = this.getTexture(signature, particle.kind, particle.shape, particle.color)
         this.particleTextureSignatures.set(particle.id, signature)
       }
 
@@ -194,13 +193,13 @@ export class PixiSceneRenderer {
     this.backgroundSprite.position.set(rect.x, rect.y)
   }
 
-  private getTexture(signature: string, kind: PixiParticle['kind'], shape: PixiParticle['shape'], colors: string[]): Texture {
+  private getTexture(signature: string, kind: PixiParticle['kind'], shape: PixiParticle['shape'], color: string): Texture {
     const cached = this.generatedTextures.get(signature)
     if (cached) {
       return cached
     }
 
-    const texture = Texture.from(createParticleTexture(kind, shape, colors))
+    const texture = Texture.from(createParticleTexture(kind, shape, color))
     this.generatedTextures.set(signature, texture)
     return texture
   }

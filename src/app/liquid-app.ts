@@ -24,13 +24,9 @@ interface ValueOutputs {
   glitterSpeed: HTMLOutputElement
   mediumSpeed: HTMLOutputElement
   largeSpeed: HTMLOutputElement
-  audioPitch: HTMLOutputElement
-  audioPulseRate: HTMLOutputElement
 }
 
 interface Controls {
-  startupOverlay: HTMLElement
-  startupButton: HTMLButtonElement
   panel: HTMLElement
   toggleButton: HTMLButtonElement
   status: HTMLElement
@@ -42,8 +38,6 @@ interface Controls {
   glitterSpeed: HTMLInputElement
   mediumSpeed: HTMLInputElement
   largeSpeed: HTMLInputElement
-  audioPitch: HTMLInputElement
-  audioPulseRate: HTMLInputElement
   backgroundMode: HTMLSelectElement
   backgroundUpload: HTMLInputElement
   resetButton: HTMLButtonElement
@@ -71,14 +65,13 @@ export class LiquidApp {
   private lastFrame = 0
   private loopTime = 0
   private loopRunning = false
-  private interactiveStarted = false
-  private startupInProgress = false
+  private motionActive = false
   private backgroundObjectUrl: string | null = null
   private readonly sceneHost: HTMLElement
   private readonly controls: Controls
 
   private readonly handlePageShow = (event: PageTransitionEvent) => {
-    if (this.interactiveStarted && (event.persisted || document.visibilityState === 'visible')) {
+    if (event.persisted || document.visibilityState === 'visible') {
       void this.orientationLock.requestLock()
       this.resumeScene()
     }
@@ -90,10 +83,6 @@ export class LiquidApp {
   }
 
   private readonly handleVisibilityChange = () => {
-    if (!this.interactiveStarted) {
-      return
-    }
-
     if (document.visibilityState === 'visible') {
       void this.orientationLock.requestLock()
       this.resumeScene()
@@ -103,10 +92,6 @@ export class LiquidApp {
   }
 
   private readonly handlePrime = async () => {
-    if (!this.interactiveStarted) {
-      return
-    }
-
     await this.feedback.prime()
     void this.orientationLock.requestLock()
   }
@@ -141,10 +126,10 @@ export class LiquidApp {
     this.renderer = this.capabilities.webgl ? new PixiSceneRenderer(sceneHost) : new CanvasSceneRenderer(sceneHost)
     this.input = new InputController(sceneHost, {
       onPrime: this.handlePrime,
-      onInteraction: ({ x, y, dx, dy, speed, force, pressed }) => {
+      onInteraction: ({ x, y, dx, dy, force, pressed }) => {
         this.fluidField.addImpulse(x, y, dx, dy, force)
         if (pressed && force > 0.52) {
-          this.feedback.pulse(clamp(force, 0, 1), speed)
+          this.feedback.pulse(clamp(force, 0, 1))
         }
       },
       onRelease: () => {},
@@ -160,6 +145,9 @@ export class LiquidApp {
       this.settings.liquidColor = safeColor
     }
 
+    this.settings.motionEnabled = false
+    this.motionActive = false
+
     this.renderer.mount()
     this.applySize()
     this.particleEngine.sync(this.settings)
@@ -169,7 +157,6 @@ export class LiquidApp {
 
     await this.loadBackground()
     this.feedback.setEnabled(this.settings.audioEnabled)
-    this.feedback.setAudioProfile(this.settings.audioPitch, this.settings.audioPulseRate)
 
     window.addEventListener('resize', this.applySize)
     window.addEventListener('pageshow', this.handlePageShow)
@@ -177,8 +164,8 @@ export class LiquidApp {
     document.addEventListener('visibilitychange', this.handleVisibilityChange)
     document.addEventListener('pointerdown', this.handleDocumentPointerDown)
 
-    this.controls.startupOverlay.classList.remove('is-hidden')
-    this.updateStatus('Нажмите «Запустить», чтобы запросить motion/audio.')
+    this.startLoop()
+    this.updateStatus()
   }
 
   destroy(): void {
@@ -252,10 +239,6 @@ export class LiquidApp {
   }
 
   private resumeScene(): void {
-    if (!this.interactiveStarted) {
-      return
-    }
-
     this.applySize()
     this.renderer.resize(this.sceneHost.clientWidth, this.sceneHost.clientHeight)
     this.particleEngine.setViewport(this.sceneHost.clientWidth, this.sceneHost.clientHeight)
@@ -269,10 +252,6 @@ export class LiquidApp {
   }
 
   private bindControls(): void {
-    this.controls.startupButton.addEventListener('click', () => {
-      void this.startExperience()
-    })
-
     this.controls.toggleButton.addEventListener('click', () => {
       this.controls.panel.classList.toggle('is-open')
     })
@@ -302,20 +281,6 @@ export class LiquidApp {
     this.bindNumericControl(this.controls.glitterSpeed, 'particleSpeed', 'glitter', this.controls.valueOutputs.glitterSpeed)
     this.bindNumericControl(this.controls.mediumSpeed, 'particleSpeed', 'medium', this.controls.valueOutputs.mediumSpeed)
     this.bindNumericControl(this.controls.largeSpeed, 'particleSpeed', 'large', this.controls.valueOutputs.largeSpeed)
-
-    this.controls.audioPitch.addEventListener('input', (event) => {
-      this.settings.audioPitch = Number((event.currentTarget as HTMLInputElement).value)
-      this.feedback.setAudioProfile(this.settings.audioPitch, this.settings.audioPulseRate)
-      this.updateValueOutputs()
-      this.persist()
-    })
-
-    this.controls.audioPulseRate.addEventListener('input', (event) => {
-      this.settings.audioPulseRate = Number((event.currentTarget as HTMLInputElement).value)
-      this.feedback.setAudioProfile(this.settings.audioPitch, this.settings.audioPulseRate)
-      this.updateValueOutputs()
-      this.persist()
-    })
 
     this.controls.backgroundMode.addEventListener('change', async (event) => {
       this.settings.backgroundMode = (event.currentTarget as HTMLSelectElement).value as AppSettings['backgroundMode']
@@ -370,20 +335,7 @@ export class LiquidApp {
       this.particleEngine.sync(this.settings)
       this.renderer.syncParticles(this.particleEngine.getParticles())
       this.feedback.setEnabled(this.settings.audioEnabled)
-      this.feedback.setAudioProfile(this.settings.audioPitch, this.settings.audioPulseRate)
-
-      if (this.interactiveStarted) {
-        if (this.settings.motionEnabled) {
-          this.controls.motionEnabled.checked = await this.enableMotion(true)
-        } else {
-          await this.enableMotion(false)
-        }
-      } else {
-        this.motion.stop()
-        this.tiltAdapter.stop()
-        this.fluidField.setGravity(0, 0)
-      }
-
+      await this.enableMotion(false)
       this.persist()
       this.updateStatus()
     })
@@ -396,14 +348,6 @@ export class LiquidApp {
 
     this.controls.motionEnabled.addEventListener('change', async (event) => {
       const enabled = (event.currentTarget as HTMLInputElement).checked
-
-      if (!this.interactiveStarted) {
-        this.settings.motionEnabled = enabled
-        this.persist()
-        this.updateStatus()
-        return
-      }
-
       const applied = await this.enableMotion(enabled)
       this.controls.motionEnabled.checked = applied
       this.persist()
@@ -432,38 +376,10 @@ export class LiquidApp {
     })
   }
 
-  private async startExperience(): Promise<void> {
-    if (this.interactiveStarted || this.startupInProgress) {
-      return
-    }
-
-    this.startupInProgress = true
-    this.controls.startupButton.disabled = true
-
-    try {
-      await this.feedback.prime()
-      void this.orientationLock.requestLock()
-
-      if (this.settings.motionEnabled) {
-        const applied = await this.enableMotion(true)
-        this.settings.motionEnabled = applied
-        this.controls.motionEnabled.checked = applied
-      }
-
-      this.interactiveStarted = true
-      this.controls.startupOverlay.classList.add('is-hidden')
-      this.startLoop()
-      this.persist()
-      this.updateStatus('Интерактив запущен.')
-    } finally {
-      this.startupInProgress = false
-      this.controls.startupButton.disabled = false
-    }
-  }
-
   private async enableMotion(enabled: boolean): Promise<boolean> {
     if (!enabled) {
       this.settings.motionEnabled = false
+      this.motionActive = false
       this.motion.stop()
       this.tiltAdapter.stop()
       this.fluidField.setGravity(0, 0)
@@ -473,10 +389,12 @@ export class LiquidApp {
     const granted = await this.motion.requestAccess()
     if (!granted) {
       this.settings.motionEnabled = false
+      this.motionActive = false
       return false
     }
 
     this.settings.motionEnabled = true
+    this.motionActive = true
     this.motion.start((intensity) => {
       this.fluidField.addShake(intensity)
       this.feedback.pulse(0.35 + intensity * 0.5)
@@ -529,8 +447,6 @@ export class LiquidApp {
     this.controls.glitterSpeed.value = String(this.settings.particleSpeed.glitter)
     this.controls.mediumSpeed.value = String(this.settings.particleSpeed.medium)
     this.controls.largeSpeed.value = String(this.settings.particleSpeed.large)
-    this.controls.audioPitch.value = String(this.settings.audioPitch)
-    this.controls.audioPulseRate.value = String(this.settings.audioPulseRate)
     this.controls.backgroundMode.value = this.settings.backgroundMode
     this.controls.audioEnabled.checked = this.settings.audioEnabled
     this.controls.motionEnabled.checked = this.settings.motionEnabled
@@ -547,8 +463,6 @@ export class LiquidApp {
     outputs.glitterSpeed.value = this.formatValue(this.settings.particleSpeed.glitter)
     outputs.mediumSpeed.value = this.formatValue(this.settings.particleSpeed.medium)
     outputs.largeSpeed.value = this.formatValue(this.settings.particleSpeed.large)
-    outputs.audioPitch.value = this.formatValue(this.settings.audioPitch)
-    outputs.audioPulseRate.value = this.formatValue(this.settings.audioPulseRate)
   }
 
   private updateActiveSwatch(): void {
@@ -572,6 +486,6 @@ export class LiquidApp {
       message ??
       `${this.capabilities.webgl ? 'WebGL' : 'Canvas'} • ${this.capabilities.pointerType} • ${
         this.capabilities.vibration ? 'vibration' : this.capabilities.audio ? 'audio fallback' : 'silent'
-      }${this.settings.motionEnabled ? ' • motion on' : ''}${this.interactiveStarted ? '' : ' • ждёт старт'}`
+      }${this.motionActive ? ' • motion on' : ''}`
   }
 }

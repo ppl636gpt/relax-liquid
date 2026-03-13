@@ -16,9 +16,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   backgroundMode: 'default',
   customBackgroundId: null,
   audioEnabled: true,
-  motionEnabled: true,
-  audioPitch: 1,
-  audioPulseRate: 1,
+  motionEnabled: false,
 }
 
 export function createDefaultSettings(): AppSettings {

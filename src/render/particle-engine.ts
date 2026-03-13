@@ -6,21 +6,12 @@ interface InternalParticleState extends ParticleState {
   vx: number
   vy: number
   drift: number
-  colorTimer: number
-  colorInterval: number
   stretchAmplitude: number
   stretchRate: number
 }
 
 const KIND_ORDER: ParticleKind[] = ['glitter', 'medium', 'large']
-const BRIGHT_PALETTE = ['#59d7d2', '#7ab8f5', '#f1a5c6', '#ac9bea', '#74c8a1', '#f4c96b']
-const WHITE = '#ffffff'
-
-function pickFromPalette(value: number): string {
-  const normalized = value - Math.floor(value)
-  const index = Math.floor(normalized * BRIGHT_PALETTE.length) % BRIGHT_PALETTE.length
-  return BRIGHT_PALETTE[index]
-}
+const BRIGHT_PALETTE = ['#59d7d2', '#7ab8f5', '#f1a5c6', '#ac9bea', '#74c8a1', '#f4c96b', '#ffffff']
 
 function pickShape(kind: ParticleKind, random: () => number): ParticleShape {
   if (kind === 'glitter') {
@@ -43,14 +34,18 @@ function pickShape(kind: ParticleKind, random: () => number): ParticleShape {
 
 function baseSizeFor(kind: ParticleKind, random: () => number): number {
   if (kind === 'glitter') {
-    return lerp(5.4, 16.8, random())
+    return lerp(0.9, 2.1, random())
   }
 
   if (kind === 'medium') {
-    return lerp(5.6, 13.2, random())
+    return lerp(2.8, 6.6, random())
   }
 
-  return lerp(14, 30, random())
+  return lerp(14, 28, random())
+}
+
+function pickColor(random: () => number): string {
+  return BRIGHT_PALETTE[Math.floor(random() * BRIGHT_PALETTE.length)]
 }
 
 export class ParticleEngine {
@@ -125,12 +120,6 @@ export class ParticleEngine {
       particle.rotation += particle.angularVelocity * flowScale + particle.vx * 0.00035
       particle.scaleX = clamp(1 + Math.sin(time * particle.stretchRate + particle.sparklePhase) * particle.stretchAmplitude, 0.58, 1.72)
       particle.scaleY = 1
-
-      particle.colorTimer += dt
-      if (particle.colorTimer >= particle.colorInterval) {
-        particle.colorTimer = 0
-        this.advanceColors(particle)
-      }
     }
   }
 
@@ -141,17 +130,15 @@ export class ParticleEngine {
   private createParticle(kind: ParticleKind, index: number): InternalParticleState {
     const random = createSeededRandom(`${kind}-${index}`)
     const z = random()
-    const shape = pickShape(kind, random)
-    const size = baseSizeFor(kind, random)
 
-    const base: InternalParticleState = {
+    return {
       id: this.nextId++,
       kind,
-      shape,
+      shape: pickShape(kind, random),
       x: random() * this.width,
       y: random() * this.height,
       z,
-      size,
+      size: baseSizeFor(kind, random),
       scaleX: 1,
       scaleY: 1,
       rotation: random() * Math.PI * 2,
@@ -159,55 +146,12 @@ export class ParticleEngine {
       settling: 0,
       response: kind === 'glitter' ? lerp(1.1, 1.35, random()) : kind === 'medium' ? lerp(0.76, 0.96, random()) : lerp(0.42, 0.64, random()),
       sparklePhase: random() * Math.PI * 2,
-      colorTick: Math.floor(random() * 9),
-      primaryColor: BRIGHT_PALETTE[Math.floor(random() * BRIGHT_PALETTE.length)],
-      secondaryColor: BRIGHT_PALETTE[Math.floor(random() * BRIGHT_PALETTE.length)],
-      segmentColors: kind === 'large' ? Array.from({ length: 5 }, (_, segment) => BRIGHT_PALETTE[(Math.floor(random() * 1000) + segment) % BRIGHT_PALETTE.length]) : [],
+      color: pickColor(random),
       vx: (random() - 0.5) * 0.4,
       vy: (random() - 0.5) * 0.2,
       drift: random() - 0.5,
-      colorTimer: 0,
-      colorInterval: kind === 'glitter' ? lerp(0.1, 0.2, random()) : kind === 'medium' ? lerp(0.22, 0.42, random()) : lerp(0.2, 0.46, random()),
       stretchAmplitude: kind === 'glitter' ? lerp(0.18, 0.42, random()) : kind === 'medium' ? lerp(0.14, 0.34, random()) : lerp(0.1, 0.2, random()),
       stretchRate: kind === 'glitter' ? lerp(4.5, 8.2, random()) : kind === 'medium' ? lerp(2.8, 5.2, random()) : lerp(1.6, 3.2, random()),
     }
-
-    this.advanceColors(base)
-    return base
-  }
-
-  private advanceColors(particle: InternalParticleState): void {
-    particle.colorTick += 1
-
-    if (particle.kind === 'glitter') {
-      const color = this.pickAnimatedColor(particle, particle.colorTick)
-      particle.primaryColor = color
-      particle.secondaryColor = color
-      particle.segmentColors = [color]
-      return
-    }
-
-    if (particle.kind === 'medium') {
-      particle.primaryColor = this.pickAnimatedColor(particle, particle.colorTick)
-      particle.secondaryColor = this.pickAnimatedColor(particle, particle.colorTick + 1)
-      particle.segmentColors = [particle.primaryColor, particle.secondaryColor]
-      return
-    }
-
-    const segmentIndex = Math.floor((Math.sin(particle.colorTick * 2.13 + particle.sparklePhase) * 0.5 + 0.5) * 5) % 5
-    const nextSegments = particle.segmentColors.length === 5 ? [...particle.segmentColors] : Array.from({ length: 5 }, () => WHITE)
-    nextSegments[segmentIndex] = this.pickAnimatedColor(particle, particle.colorTick + segmentIndex)
-    particle.segmentColors = nextSegments
-    particle.primaryColor = nextSegments[0]
-    particle.secondaryColor = nextSegments[1]
-  }
-
-  private pickAnimatedColor(particle: InternalParticleState, tick: number): string {
-    if (tick % 3 === 0) {
-      return WHITE
-    }
-
-    const wave = Math.sin(tick * 1.618 + particle.sparklePhase * 1.43 + particle.drift * 3.1)
-    return pickFromPalette(wave * 0.5 + 0.5)
   }
 }

@@ -1,6 +1,6 @@
 import type { AppSettings, ParticleState } from '../types.ts'
 import { computeCoverRect, hexToNumber, lerp } from '../utils/math.ts'
-import { drawSegmentedShape, getColorZones } from './particle-art.ts'
+import { drawParticleShape } from './particle-art.ts'
 
 interface CanvasParticle extends ParticleState {}
 
@@ -98,7 +98,7 @@ export class CanvasSceneRenderer {
       context.rotate(particle.rotation)
       context.scale(particle.scaleX, particle.scaleY)
       context.globalAlpha = 1
-      drawSegmentedShape(context, particle.shape, radius, getColorZones(particle))
+      drawParticleShape(context, particle.shape, radius, particle.color)
       context.restore()
     }
 

@@ -15,15 +15,6 @@ appRoot.innerHTML = `
     <div class="scene-shell" id="scene-shell">
       <div class="scene-host" id="scene-host"></div>
 
-      <div class="startup-overlay" id="startup-overlay">
-        <div class="startup-card">
-          <p class="eyebrow">Liquid Garden</p>
-          <h2>Старт интерактива</h2>
-          <p>Нажмите один раз, чтобы включить звук и запросить motion-доступ.</p>
-          <button id="startup-button" type="button">Запустить</button>
-        </div>
-      </div>
-
       <button class="settings-toggle" id="settings-toggle" type="button" aria-label="Открыть настройки">
         <span aria-hidden="true">&#9881;</span>
       </button>
@@ -110,23 +101,6 @@ appRoot.innerHTML = `
           </label>
         </div>
 
-        <div class="field-group">
-          <label class="field">
-            <div class="field-head">
-              <span>Audio pitch</span>
-              <output id="audio-pitch-value"></output>
-            </div>
-            <input id="audio-pitch" type="range" min="0.5" max="2.4" step="0.05" value="1" />
-          </label>
-          <label class="field">
-            <div class="field-head">
-              <span>Audio pulse rate</span>
-              <output id="audio-pulse-rate-value"></output>
-            </div>
-            <input id="audio-pulse-rate" type="range" min="0.2" max="3.6" step="0.05" value="1" />
-          </label>
-        </div>
-
         <label class="field">
           <span>Фон</span>
           <select id="background-mode">
@@ -146,7 +120,7 @@ appRoot.innerHTML = `
         </label>
 
         <label class="checkbox">
-          <input id="motion-enabled" type="checkbox" checked />
+          <input id="motion-enabled" type="checkbox" />
           <span>Shake / motion</span>
         </label>
 
@@ -159,8 +133,6 @@ appRoot.innerHTML = `
 const liquidApp = new LiquidApp(
   document.querySelector<HTMLElement>('#scene-host')!,
   {
-    startupOverlay: document.querySelector<HTMLElement>('#startup-overlay')!,
-    startupButton: document.querySelector<HTMLButtonElement>('#startup-button')!,
     panel: document.querySelector<HTMLElement>('#settings-panel')!,
     toggleButton: document.querySelector<HTMLButtonElement>('#settings-toggle')!,
     status: document.querySelector<HTMLElement>('#status-line')!,
@@ -172,8 +144,6 @@ const liquidApp = new LiquidApp(
     glitterSpeed: document.querySelector<HTMLInputElement>('#glitter-speed')!,
     mediumSpeed: document.querySelector<HTMLInputElement>('#medium-speed')!,
     largeSpeed: document.querySelector<HTMLInputElement>('#large-speed')!,
-    audioPitch: document.querySelector<HTMLInputElement>('#audio-pitch')!,
-    audioPulseRate: document.querySelector<HTMLInputElement>('#audio-pulse-rate')!,
     backgroundMode: document.querySelector<HTMLSelectElement>('#background-mode')!,
     backgroundUpload: document.querySelector<HTMLInputElement>('#background-upload')!,
     resetButton: document.querySelector<HTMLButtonElement>('#reset-button')!,
@@ -187,8 +157,6 @@ const liquidApp = new LiquidApp(
       glitterSpeed: document.querySelector<HTMLOutputElement>('#glitter-speed-value')!,
       mediumSpeed: document.querySelector<HTMLOutputElement>('#medium-speed-value')!,
       largeSpeed: document.querySelector<HTMLOutputElement>('#large-speed-value')!,
-      audioPitch: document.querySelector<HTMLOutputElement>('#audio-pitch-value')!,
-      audioPulseRate: document.querySelector<HTMLOutputElement>('#audio-pulse-rate-value')!,
     },
   },
 )

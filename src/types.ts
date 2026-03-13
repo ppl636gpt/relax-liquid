@@ -17,8 +17,6 @@ export interface AppSettings {
   customBackgroundId: string | null
   audioEnabled: boolean
   motionEnabled: boolean
-  audioPitch: number
-  audioPulseRate: number
 }
 
 export interface ParticleState {
@@ -36,10 +34,7 @@ export interface ParticleState {
   settling: number
   response: number
   sparklePhase: number
-  colorTick: number
-  primaryColor: string
-  secondaryColor: string
-  segmentColors: string[]
+  color: string
 }
 
 export interface PlatformCapabilities {
@@ -52,8 +47,7 @@ export interface PlatformCapabilities {
 
 export interface FeedbackAdapter {
   prime(): Promise<void>
-  pulse(intensity: number, pointerSpeed?: number): void
-  setAudioProfile(pitch: number, pulseRate: number): void
+  pulse(intensity: number): void
   setEnabled(enabled: boolean): void
   destroy(): void
 }

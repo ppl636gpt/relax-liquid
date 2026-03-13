@@ -1,22 +1,9 @@
-import type { ParticleKind, ParticleShape, ParticleState } from '../types.ts'
-
-export function getColorZones(particle: Pick<ParticleState, 'kind' | 'primaryColor' | 'secondaryColor' | 'segmentColors'>): string[] {
-  if (particle.kind === 'glitter') {
-    return [particle.primaryColor]
-  }
-
-  if (particle.kind === 'medium') {
-    return [particle.primaryColor, particle.secondaryColor]
-  }
-
-  const normalizedSegments = particle.segmentColors.length === 5 ? particle.segmentColors : ['#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff']
-  return normalizedSegments
-}
+import type { ParticleKind, ParticleShape } from '../types.ts'
 
 export function createParticleTexture(
   kind: ParticleKind,
   shape: ParticleShape,
-  colors: string[],
+  color: string,
 ): HTMLCanvasElement {
   const size = kind === 'glitter' ? 48 : kind === 'medium' ? 72 : 136
   const canvas = document.createElement('canvas')
@@ -32,50 +19,20 @@ export function createParticleTexture(
   context.translate(size / 2, size / 2)
   context.shadowColor = 'rgba(255,255,255,0.22)'
   context.shadowBlur = kind === 'large' ? 7 : 4
-  drawSegmentedShape(context, shape, radius, colors)
+  drawParticleShape(context, shape, radius, color)
 
   return canvas
 }
 
-export function drawSegmentedShape(
+export function drawParticleShape(
   context: CanvasRenderingContext2D,
   shape: ParticleShape,
   radius: number,
-  colors: string[],
+  color: string,
 ): void {
-  if (colors.length <= 1) {
-    context.fillStyle = colors[0] ?? '#ffffff'
-    drawShapePath(context, shape, radius)
-    context.fill()
-    return
-  }
-
-  context.save()
+  context.fillStyle = color
   drawShapePath(context, shape, radius)
-  context.clip()
-
-  if (colors.length === 2) {
-    context.fillStyle = colors[0]
-    context.fillRect(-radius * 1.2, -radius * 1.2, radius * 1.2, radius * 2.4)
-    context.fillStyle = colors[1]
-    context.fillRect(0, -radius * 1.2, radius * 1.2, radius * 2.4)
-    context.restore()
-    return
-  }
-
-  const segmentCount = colors.length
-  for (let index = 0; index < segmentCount; index += 1) {
-    const start = -Math.PI / 2 + (index / segmentCount) * Math.PI * 2
-    const end = -Math.PI / 2 + ((index + 1) / segmentCount) * Math.PI * 2
-    context.beginPath()
-    context.moveTo(0, 0)
-    context.arc(0, 0, radius * 2.2, start, end)
-    context.closePath()
-    context.fillStyle = colors[index]
-    context.fill()
-  }
-
-  context.restore()
+  context.fill()
 }
 
 export function drawShapePath(context: CanvasRenderingContext2D, shape: ParticleShape, radius: number): void {
