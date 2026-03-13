@@ -5,6 +5,7 @@ export interface InteractionPayload {
   y: number
   dx: number
   dy: number
+  speed: number
   force: number
   pressed: boolean
 }
@@ -50,6 +51,7 @@ export class InputController {
       y: event.clientY,
       dx,
       dy,
+      speed: velocity,
       force,
       pressed,
     })

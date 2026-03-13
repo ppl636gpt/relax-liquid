@@ -1,8 +1,25 @@
-import type { LargeParticleVariant, ParticleKind } from '../types.ts'
+import type { ParticleKind, ParticleShape, ParticleState } from '../types.ts'
 
-export function createParticleTexture(kind: ParticleKind, variant: LargeParticleVariant = 'star'): HTMLCanvasElement {
+export function getColorZones(particle: Pick<ParticleState, 'kind' | 'primaryColor' | 'secondaryColor' | 'segmentColors'>): string[] {
+  if (particle.kind === 'glitter') {
+    return [particle.primaryColor]
+  }
+
+  if (particle.kind === 'medium') {
+    return [particle.primaryColor, particle.secondaryColor]
+  }
+
+  const normalizedSegments = particle.segmentColors.length === 5 ? particle.segmentColors : ['#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff']
+  return normalizedSegments
+}
+
+export function createParticleTexture(
+  kind: ParticleKind,
+  shape: ParticleShape,
+  colors: string[],
+): HTMLCanvasElement {
+  const size = kind === 'glitter' ? 48 : kind === 'medium' ? 72 : 136
   const canvas = document.createElement('canvas')
-  const size = kind === 'large' ? 96 : kind === 'medium' ? 48 : 24
   canvas.width = size
   canvas.height = size
   const context = canvas.getContext('2d')
@@ -11,53 +28,82 @@ export function createParticleTexture(kind: ParticleKind, variant: LargeParticle
     throw new Error('Canvas 2D недоступен для генерации текстуры.')
   }
 
-  const center = size / 2
-
-  if (kind === 'glitter') {
-    const gradient = context.createRadialGradient(center, center, 0, center, center, center)
-    gradient.addColorStop(0, 'rgba(255,255,255,0.85)')
-    gradient.addColorStop(0.55, 'rgba(255,255,255,0.34)')
-    gradient.addColorStop(1, 'rgba(255,255,255,0)')
-    context.fillStyle = gradient
-    context.beginPath()
-    context.arc(center, center, center * 0.9, 0, Math.PI * 2)
-    context.fill()
-    return canvas
-  }
-
-  if (kind === 'medium') {
-    const gradient = context.createRadialGradient(center * 0.82, center * 0.82, 0, center, center, center)
-    gradient.addColorStop(0, 'rgba(255,255,255,1)')
-    gradient.addColorStop(0.42, 'rgba(255,255,255,0.92)')
-    gradient.addColorStop(0.7, 'rgba(212, 252, 255, 0.52)')
-    gradient.addColorStop(1, 'rgba(255,255,255,0)')
-    context.fillStyle = gradient
-    context.beginPath()
-    context.arc(center, center, center * 0.92, 0, Math.PI * 2)
-    context.fill()
-    return canvas
-  }
-
-  context.translate(center, center)
-  context.shadowColor = 'rgba(255,255,255,0.38)'
-  context.shadowBlur = 18
-  context.fillStyle = 'rgba(255,255,255,0.95)'
-
-  if (variant === 'heart') {
-    drawHeartPath(context, center * 0.68)
-  } else {
-    drawStarPath(context, 5, center * 0.72, center * 0.33)
-  }
-
-  context.fill()
-  context.shadowBlur = 0
-  context.globalCompositeOperation = 'lighter'
-  context.fillStyle = 'rgba(189, 245, 255, 0.42)'
-  context.beginPath()
-  context.arc(-center * 0.08, -center * 0.14, center * 0.18, 0, Math.PI * 2)
-  context.fill()
+  const radius = size * 0.42
+  context.translate(size / 2, size / 2)
+  context.shadowColor = 'rgba(255,255,255,0.22)'
+  context.shadowBlur = kind === 'large' ? 7 : 4
+  drawSegmentedShape(context, shape, radius, colors)
 
   return canvas
+}
+
+export function drawSegmentedShape(
+  context: CanvasRenderingContext2D,
+  shape: ParticleShape,
+  radius: number,
+  colors: string[],
+): void {
+  if (colors.length <= 1) {
+    context.fillStyle = colors[0] ?? '#ffffff'
+    drawShapePath(context, shape, radius)
+    context.fill()
+    return
+  }
+
+  context.save()
+  drawShapePath(context, shape, radius)
+  context.clip()
+
+  if (colors.length === 2) {
+    context.fillStyle = colors[0]
+    context.fillRect(-radius * 1.2, -radius * 1.2, radius * 1.2, radius * 2.4)
+    context.fillStyle = colors[1]
+    context.fillRect(0, -radius * 1.2, radius * 1.2, radius * 2.4)
+    context.restore()
+    return
+  }
+
+  const segmentCount = colors.length
+  for (let index = 0; index < segmentCount; index += 1) {
+    const start = -Math.PI / 2 + (index / segmentCount) * Math.PI * 2
+    const end = -Math.PI / 2 + ((index + 1) / segmentCount) * Math.PI * 2
+    context.beginPath()
+    context.moveTo(0, 0)
+    context.arc(0, 0, radius * 2.2, start, end)
+    context.closePath()
+    context.fillStyle = colors[index]
+    context.fill()
+  }
+
+  context.restore()
+}
+
+export function drawShapePath(context: CanvasRenderingContext2D, shape: ParticleShape, radius: number): void {
+  if (shape === 'circle') {
+    context.beginPath()
+    context.arc(0, 0, radius, 0, Math.PI * 2)
+    context.closePath()
+    return
+  }
+
+  if (shape === 'square') {
+    context.beginPath()
+    context.rect(-radius, -radius, radius * 2, radius * 2)
+    context.closePath()
+    return
+  }
+
+  if (shape === 'heart') {
+    drawHeartPath(context, radius)
+    return
+  }
+
+  if (shape === 'star6') {
+    drawStarPath(context, 6, radius, radius * 0.52)
+    return
+  }
+
+  drawStarPath(context, 5, radius, radius * 0.48)
 }
 
 export function createLiquidBaseTexture(): HTMLCanvasElement {

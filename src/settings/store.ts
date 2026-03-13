@@ -22,15 +22,54 @@ function mergeSettings(saved: Partial<AppSettings> | null): AppSettings {
       ...DEFAULT_SETTINGS.particleSpeed,
       ...saved.particleSpeed,
     },
+    audioPitch: typeof saved.audioPitch === 'number' ? saved.audioPitch : DEFAULT_SETTINGS.audioPitch,
+    audioPulseRate: typeof saved.audioPulseRate === 'number' ? saved.audioPulseRate : DEFAULT_SETTINGS.audioPulseRate,
   }
 }
 
+function decodeImageFile(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file)
+    const image = new Image()
+    image.decoding = 'async'
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl)
+      resolve(image)
+    }
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      reject(new Error('Не удалось декодировать изображение.'))
+    }
+    image.src = objectUrl
+  })
+}
+
 async function resizeImage(file: File): Promise<Blob> {
-  const bitmap = await createImageBitmap(file)
+  let bitmap: ImageBitmap | null = null
+  let image: HTMLImageElement | null = null
+
+  if (typeof createImageBitmap === 'function') {
+    try {
+      bitmap = await createImageBitmap(file)
+    } catch {
+      bitmap = null
+    }
+  }
+
+  if (!bitmap) {
+    image = await decodeImageFile(file)
+  }
+
+  const sourceWidth = bitmap?.width ?? image?.naturalWidth ?? 0
+  const sourceHeight = bitmap?.height ?? image?.naturalHeight ?? 0
+  if (sourceWidth < 1 || sourceHeight < 1) {
+    throw new Error('Некорректный размер изображения.')
+  }
+
   const maxSide = 2048
-  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height))
-  const width = Math.max(1, Math.round(bitmap.width * scale))
-  const height = Math.max(1, Math.round(bitmap.height * scale))
+  const scale = Math.min(1, maxSide / Math.max(sourceWidth, sourceHeight))
+  const width = Math.max(1, Math.round(sourceWidth * scale))
+  const height = Math.max(1, Math.round(sourceHeight * scale))
 
   const canvas = document.createElement('canvas')
   canvas.width = width
@@ -41,30 +80,52 @@ async function resizeImage(file: File): Promise<Blob> {
     throw new Error('Canvas 2D недоступен для ресайза фона.')
   }
 
-  context.drawImage(bitmap, 0, 0, width, height)
+  if (bitmap) {
+    context.drawImage(bitmap, 0, 0, width, height)
+  } else if (image) {
+    context.drawImage(image, 0, 0, width, height)
+  }
 
   const blob = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
       (result) => {
-        if (!result) {
-          reject(new Error('Не удалось сериализовать фон.'))
+        if (result) {
+          resolve(result)
           return
         }
-        resolve(result)
+
+        canvas.toBlob(
+          (fallback) => {
+            if (!fallback) {
+              reject(new Error('Не удалось сериализовать фон.'))
+              return
+            }
+            resolve(fallback)
+          },
+          'image/png',
+        )
       },
-      'image/webp',
+      'image/jpeg',
       0.92,
     )
   })
 
-  bitmap.close()
+  bitmap?.close()
   return blob
 }
 
 export class SettingsStore {
   load(): AppSettings {
     const raw = window.localStorage.getItem(SETTINGS_KEY)
-    return mergeSettings(raw ? (JSON.parse(raw) as Partial<AppSettings>) : null)
+    if (!raw) {
+      return createDefaultSettings()
+    }
+
+    try {
+      return mergeSettings(JSON.parse(raw) as Partial<AppSettings>)
+    } catch {
+      return createDefaultSettings()
+    }
   }
 
   save(settings: AppSettings): void {

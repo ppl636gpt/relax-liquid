@@ -8,13 +8,11 @@ import {
   TilingSprite,
 } from 'pixi.js'
 
-import type { AppSettings, LargeParticleVariant, ParticleState } from '../types.ts'
+import type { AppSettings, ParticleState } from '../types.ts'
 import { computeCoverRect, hexToNumber, lerp } from '../utils/math.ts'
-import { createLiquidBaseTexture, createParticleTexture, createShimmerTexture } from './particle-art.ts'
+import { createLiquidBaseTexture, createParticleTexture, createShimmerTexture, getColorZones } from './particle-art.ts'
 
-interface PixiParticle extends ParticleState {
-  variant: LargeParticleVariant
-}
+interface PixiParticle extends ParticleState {}
 
 export interface RenderFrame {
   settings: AppSettings
@@ -44,12 +42,8 @@ export class PixiSceneRenderer {
   private readonly rippleGraphics = new Graphics()
   private readonly glossGraphics = new Graphics()
   private readonly particleSprites = new Map<number, Sprite>()
-  private readonly particleTextures: Record<string, Texture> = {
-    glitter: Texture.from(createParticleTexture('glitter')),
-    medium: Texture.from(createParticleTexture('medium')),
-    'large-star': Texture.from(createParticleTexture('large', 'star')),
-    'large-heart': Texture.from(createParticleTexture('large', 'heart')),
-  }
+  private readonly particleTextureSignatures = new Map<number, string>()
+  private readonly generatedTextures = new Map<string, Texture>()
 
   private viewportWidth = 1
   private viewportHeight = 1
@@ -98,6 +92,7 @@ export class PixiSceneRenderer {
       if (!ids.has(id)) {
         sprite.destroy()
         this.particleSprites.delete(id)
+        this.particleTextureSignatures.delete(id)
       }
     }
 
@@ -106,10 +101,9 @@ export class PixiSceneRenderer {
         continue
       }
 
-      const textureKey =
-        particle.kind === 'large' ? `large-${particle.variant}` : particle.kind
-      const sprite = new Sprite(this.particleTextures[textureKey])
+      const sprite = new Sprite(Texture.WHITE)
       sprite.anchor.set(0.5)
+      sprite.alpha = 1
       this.particleLayer.addChild(sprite)
       this.particleSprites.set(particle.id, sprite)
     }
@@ -132,11 +126,11 @@ export class PixiSceneRenderer {
 
   render(frame: RenderFrame): void {
     this.tintSprite.tint = hexToNumber(frame.settings.liquidColor)
-    this.tintSprite.alpha = 0.12 + frame.settings.liquidOpacity / 100 * 0.62
+    this.tintSprite.alpha = 0.04 + Math.min(0.9, frame.settings.liquidOpacity / 400 * 1.08)
 
     this.shimmerSprite.tilePosition.x += 0.18 + frame.energy * 44
     this.shimmerSprite.tilePosition.y += 0.08 + frame.energy * 26
-    this.shimmerSprite.alpha = 0.11 + Math.min(0.18, frame.energy * 72)
+    this.shimmerSprite.alpha = 0.08 + Math.min(0.14, frame.energy * 54)
 
     for (const particle of frame.particles) {
       const sprite = this.particleSprites.get(particle.id)
@@ -144,14 +138,21 @@ export class PixiSceneRenderer {
         continue
       }
 
-      const depthScale = lerp(0.76, 1.24, particle.z)
-      const sparkleBase = particle.kind === 'glitter' ? 0.08 : particle.kind === 'medium' ? 0.22 : 0.48
-      const sparkle = 1 + Math.sin(frame.time * (1.1 + particle.z) + particle.sparklePhase + particle.rotation * 4) * sparkleBase
+      const colors = getColorZones(particle)
+      const signature = `${particle.kind}:${particle.shape}:${colors.join('|')}`
+      const previousSignature = this.particleTextureSignatures.get(particle.id)
+      if (signature !== previousSignature) {
+        sprite.texture = this.getTexture(signature, particle.kind, particle.shape, colors)
+        this.particleTextureSignatures.set(particle.id, signature)
+      }
 
+      const depthScale = lerp(0.76, 1.24, particle.z)
+      const baseScale = (particle.size / Math.max(sprite.texture.width, sprite.texture.height)) * depthScale
       sprite.position.set(particle.x, particle.y)
       sprite.rotation = particle.rotation
-      sprite.scale.set((particle.size / sprite.texture.width) * depthScale * sparkle)
-      sprite.alpha = lerp(0.24, 0.92, particle.z) * sparkle
+      sprite.scale.set(baseScale * particle.scaleX, baseScale * particle.scaleY)
+      sprite.alpha = 1
+      sprite.tint = 0xffffff
     }
 
     this.rippleGraphics.clear()
@@ -171,6 +172,11 @@ export class PixiSceneRenderer {
   }
 
   destroy(): void {
+    for (const texture of this.generatedTextures.values()) {
+      texture.destroy(true)
+    }
+    this.generatedTextures.clear()
+
     this.app.destroy(true, { children: true, texture: false, baseTexture: false })
   }
 
@@ -186,5 +192,16 @@ export class PixiSceneRenderer {
     this.backgroundSprite.width = rect.width
     this.backgroundSprite.height = rect.height
     this.backgroundSprite.position.set(rect.x, rect.y)
+  }
+
+  private getTexture(signature: string, kind: PixiParticle['kind'], shape: PixiParticle['shape'], colors: string[]): Texture {
+    const cached = this.generatedTextures.get(signature)
+    if (cached) {
+      return cached
+    }
+
+    const texture = Texture.from(createParticleTexture(kind, shape, colors))
+    this.generatedTextures.set(signature, texture)
+    return texture
   }
 }

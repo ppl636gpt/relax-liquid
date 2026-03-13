@@ -1,6 +1,6 @@
 export type BackgroundMode = 'default' | 'custom'
 export type ParticleKind = 'glitter' | 'medium' | 'large'
-export type LargeParticleVariant = 'heart' | 'star'
+export type ParticleShape = 'circle' | 'square' | 'star6' | 'star5' | 'heart'
 
 export interface ParticleTuning {
   glitter: number
@@ -17,20 +17,29 @@ export interface AppSettings {
   customBackgroundId: string | null
   audioEnabled: boolean
   motionEnabled: boolean
+  audioPitch: number
+  audioPulseRate: number
 }
 
 export interface ParticleState {
   id: number
   kind: ParticleKind
+  shape: ParticleShape
   x: number
   y: number
   z: number
   size: number
+  scaleX: number
+  scaleY: number
   rotation: number
   angularVelocity: number
   settling: number
   response: number
   sparklePhase: number
+  colorTick: number
+  primaryColor: string
+  secondaryColor: string
+  segmentColors: string[]
 }
 
 export interface PlatformCapabilities {
@@ -43,7 +52,8 @@ export interface PlatformCapabilities {
 
 export interface FeedbackAdapter {
   prime(): Promise<void>
-  pulse(intensity: number): void
+  pulse(intensity: number, pointerSpeed?: number): void
+  setAudioProfile(pitch: number, pulseRate: number): void
   setEnabled(enabled: boolean): void
   destroy(): void
 }

@@ -1,12 +1,12 @@
 import type { AppSettings } from '../types.ts'
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  liquidColor: '#79d8dc',
+  liquidColor: '#59d7d2',
   liquidOpacity: 35,
   particleCounts: {
-    glitter: 900,
-    medium: 220,
-    large: 36,
+    glitter: 4500,
+    medium: 1100,
+    large: 180,
   },
   particleSpeed: {
     glitter: 1.35,
@@ -16,7 +16,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   backgroundMode: 'default',
   customBackgroundId: null,
   audioEnabled: true,
-  motionEnabled: false,
+  motionEnabled: true,
+  audioPitch: 1,
+  audioPulseRate: 1,
 }
 
 export function createDefaultSettings(): AppSettings {

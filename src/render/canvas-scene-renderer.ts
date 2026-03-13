@@ -1,9 +1,8 @@
-import type { AppSettings, LargeParticleVariant, ParticleState } from '../types.ts'
+import type { AppSettings, ParticleState } from '../types.ts'
 import { computeCoverRect, hexToNumber, lerp } from '../utils/math.ts'
+import { drawSegmentedShape, getColorZones } from './particle-art.ts'
 
-interface CanvasParticle extends ParticleState {
-  variant: LargeParticleVariant
-}
+interface CanvasParticle extends ParticleState {}
 
 interface RenderFrame {
   settings: AppSettings
@@ -75,10 +74,10 @@ export class CanvasSceneRenderer {
     }
 
     const gradient = context.createLinearGradient(0, 0, 0, this.height)
-    gradient.addColorStop(0, `${frame.settings.liquidColor}18`)
-    gradient.addColorStop(0.5, `${frame.settings.liquidColor}44`)
-    gradient.addColorStop(1, `${frame.settings.liquidColor}66`)
-    context.globalAlpha = 0.14 + frame.settings.liquidOpacity / 100 * 0.58
+    gradient.addColorStop(0, `${frame.settings.liquidColor}22`)
+    gradient.addColorStop(0.5, `${frame.settings.liquidColor}66`)
+    gradient.addColorStop(1, `${frame.settings.liquidColor}a6`)
+    context.globalAlpha = 0.06 + Math.min(0.92, frame.settings.liquidOpacity / 400 * 1.08)
     context.fillStyle = gradient
     context.fillRect(0, 0, this.width, this.height)
 
@@ -92,28 +91,18 @@ export class CanvasSceneRenderer {
     }
 
     for (const particle of frame.particles) {
-      const sparkle = 1 + Math.sin(frame.time * (1 + particle.z) + particle.sparklePhase + particle.rotation * 4) * (particle.kind === 'large' ? 0.4 : particle.kind === 'medium' ? 0.2 : 0.06)
-      const radius = particle.size * lerp(0.75, 1.2, particle.z) * sparkle
+      const depthScale = lerp(0.75, 1.22, particle.z)
+      const radius = particle.size * depthScale
       context.save()
       context.translate(particle.x, particle.y)
       context.rotate(particle.rotation)
-      context.globalAlpha = lerp(0.2, 0.95, particle.z) * sparkle
-      context.fillStyle = particle.kind === 'glitter' ? 'rgba(255,255,255,0.72)' : particle.kind === 'medium' ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.98)'
-      if (particle.kind === 'large') {
-        if (particle.variant === 'heart') {
-          this.drawHeart(context, radius)
-        } else {
-          this.drawStar(context, radius)
-        }
-      } else {
-        context.beginPath()
-        context.arc(0, 0, radius, 0, Math.PI * 2)
-        context.fill()
-      }
+      context.scale(particle.scaleX, particle.scaleY)
+      context.globalAlpha = 1
+      drawSegmentedShape(context, particle.shape, radius, getColorZones(particle))
       context.restore()
     }
 
-    context.globalAlpha = 0.04 + Math.min(0.12, frame.energy * 60)
+    context.globalAlpha = 0.05 + Math.min(0.22, frame.energy * 60)
     context.fillStyle = `#${hexToNumber(frame.settings.liquidColor).toString(16).padStart(6, '0')}`
     context.fillRect(0, 0, this.width, this.height)
     context.globalAlpha = 1
@@ -125,31 +114,5 @@ export class CanvasSceneRenderer {
 
   getElement(): HTMLElement {
     return this.canvas
-  }
-
-  private drawHeart(context: CanvasRenderingContext2D, radius: number): void {
-    context.beginPath()
-    context.moveTo(0, radius)
-    context.bezierCurveTo(-radius * 1.1, radius * 0.2, -radius * 1.2, -radius * 0.7, 0, -radius * 0.2)
-    context.bezierCurveTo(radius * 1.2, -radius * 0.7, radius * 1.1, radius * 0.2, 0, radius)
-    context.closePath()
-    context.fill()
-  }
-
-  private drawStar(context: CanvasRenderingContext2D, radius: number): void {
-    context.beginPath()
-    for (let index = 0; index < 10; index += 1) {
-      const currentRadius = index % 2 === 0 ? radius : radius * 0.46
-      const angle = index * (Math.PI / 5) - Math.PI / 2
-      const x = Math.cos(angle) * currentRadius
-      const y = Math.sin(angle) * currentRadius
-      if (index === 0) {
-        context.moveTo(x, y)
-      } else {
-        context.lineTo(x, y)
-      }
-    }
-    context.closePath()
-    context.fill()
   }
 }
