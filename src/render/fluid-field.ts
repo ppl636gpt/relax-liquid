@@ -27,6 +27,8 @@ export class FluidField {
   private time = 0
   private waves: Wave[] = []
   private energy = 0
+  private tiltBiasX = 0
+  private tiltBiasY = 0
 
   resize(width: number, height: number): void {
     this.width = Math.max(1, width)
@@ -96,6 +98,11 @@ export class FluidField {
         0.55 + safeIntensity * 0.9,
       )
     }
+  }
+
+  setTiltBias(x: number, y: number): void {
+    this.tiltBiasX = clamp(x, -1, 1)
+    this.tiltBiasY = clamp(y, -1, 1)
   }
 
   step(dt: number): void {
@@ -172,6 +179,9 @@ export class FluidField {
     }
 
     const depth = lerp(0.72, 1.18, z)
+    const biasStrength = 0.28
+    sampleX += this.tiltBiasX * biasStrength
+    sampleY += this.tiltBiasY * biasStrength
     return {
       x: sampleX * depth,
       y: sampleY * depth,

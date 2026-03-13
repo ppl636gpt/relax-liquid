@@ -3,6 +3,8 @@ import { InputController } from '../input/input-controller.ts'
 import { detectCapabilities } from '../platform/capabilities.ts'
 import { WebFeedbackAdapter } from '../platform/feedback.ts'
 import { WebMotionAdapter } from '../platform/motion.ts'
+import { OrientationLock } from '../platform/orientation-lock.ts'
+import { TiltAdapter } from '../platform/tilt-adapter.ts'
 import { FluidField } from '../render/fluid-field.ts'
 import { ParticleEngine } from '../render/particle-engine.ts'
 import { CanvasSceneRenderer } from '../render/canvas-scene-renderer.ts'
@@ -38,6 +40,8 @@ export class LiquidApp {
   private readonly settingsStore = new SettingsStore()
   private readonly feedback = new WebFeedbackAdapter(this.capabilities)
   private readonly motion = new WebMotionAdapter(this.capabilities)
+  private readonly orientationLock = new OrientationLock()
+  private readonly tiltAdapter = new TiltAdapter(this.capabilities)
   private readonly fluidField = new FluidField()
   private readonly particleEngine = new ParticleEngine()
   private readonly renderer: SceneRenderer
@@ -47,9 +51,40 @@ export class LiquidApp {
   private frameHandle = 0
   private lastFrame = 0
   private loopTime = 0
+  private loopRunning = false
   private backgroundObjectUrl: string | null = null
   private readonly sceneHost: HTMLElement
   private readonly controls: Controls
+
+  private readonly handlePageShow = (event: PageTransitionEvent) => {
+    if (event.persisted || document.visibilityState === 'visible') {
+      void this.orientationLock.requestLock()
+      this.resumeScene()
+    }
+  }
+
+  private readonly handlePageHide = () => {
+    this.orientationLock.unlock()
+    this.pauseScene()
+  }
+
+  private readonly handleVisibilityChange = () => {
+    if (document.visibilityState === 'visible') {
+      void this.orientationLock.requestLock()
+      this.resumeScene()
+    } else {
+      this.pauseScene()
+    }
+  }
+
+  private readonly handlePrime = async () => {
+    await this.feedback.prime()
+    void this.orientationLock.requestLock()
+  }
+
+  private readonly handleTilt = (x: number, y: number) => {
+    this.fluidField.setTiltBias(x * -0.62, y * 0.35)
+  }
 
   constructor(
     sceneHost: HTMLElement,
@@ -59,9 +94,7 @@ export class LiquidApp {
     this.controls = controls
     this.renderer = this.capabilities.webgl ? new PixiSceneRenderer(sceneHost) : new CanvasSceneRenderer(sceneHost)
     this.input = new InputController(sceneHost, {
-      onPrime: async () => {
-        await this.feedback.prime()
-      },
+      onPrime: this.handlePrime,
       onInteraction: ({ x, y, dx, dy, force, pressed }) => {
         this.fluidField.addImpulse(x, y, dx, dy, force)
         if (pressed && force > 0.64) {
@@ -91,13 +124,22 @@ export class LiquidApp {
     }
 
     window.addEventListener('resize', this.applySize)
+    window.addEventListener('pageshow', this.handlePageShow)
+    window.addEventListener('pagehide', this.handlePageHide)
+    document.addEventListener('visibilitychange', this.handleVisibilityChange)
     this.startLoop()
     this.updateStatus()
   }
 
   destroy(): void {
-    cancelAnimationFrame(this.frameHandle)
+    this.orientationLock.unlock()
+    this.tiltAdapter.destroy()
+    this.fluidField.setTiltBias(0, 0)
+    this.pauseScene()
     window.removeEventListener('resize', this.applySize)
+    window.removeEventListener('pageshow', this.handlePageShow)
+    window.removeEventListener('pagehide', this.handlePageHide)
+    document.removeEventListener('visibilitychange', this.handleVisibilityChange)
     this.input.destroy()
     this.motion.destroy()
     this.feedback.destroy()
@@ -116,6 +158,11 @@ export class LiquidApp {
   }
 
   private startLoop(): void {
+    if (this.loopRunning) {
+      return
+    }
+
+    this.loopRunning = true
     const tick = (timestamp: number) => {
       if (!this.lastFrame) {
         this.lastFrame = timestamp
@@ -140,6 +187,30 @@ export class LiquidApp {
     }
 
     this.frameHandle = requestAnimationFrame(tick)
+  }
+
+  private stopLoop(): void {
+    if (!this.loopRunning) {
+      return
+    }
+
+    cancelAnimationFrame(this.frameHandle)
+    this.frameHandle = 0
+    this.loopRunning = false
+    this.lastFrame = 0
+  }
+
+  private resumeScene(): void {
+    this.applySize()
+    this.renderer.resize(this.sceneHost.clientWidth, this.sceneHost.clientHeight)
+    this.particleEngine.setViewport(this.sceneHost.clientWidth, this.sceneHost.clientHeight)
+    this.lastFrame = 0
+    this.stopLoop()
+    this.startLoop()
+  }
+
+  private pauseScene(): void {
+    this.stopLoop()
   }
 
   private bindControls(): void {
@@ -204,6 +275,8 @@ export class LiquidApp {
       this.renderer.syncParticles(this.particleEngine.getParticles())
       this.feedback.setEnabled(this.settings.audioEnabled)
       this.motion.stop()
+      this.tiltAdapter.stop()
+      this.fluidField.setTiltBias(0, 0)
       this.persist()
       this.updateStatus()
     })
@@ -246,6 +319,8 @@ export class LiquidApp {
     if (!enabled) {
       this.settings.motionEnabled = false
       this.motion.stop()
+      this.tiltAdapter.stop()
+      this.fluidField.setTiltBias(0, 0)
       return false
     }
 
@@ -260,6 +335,10 @@ export class LiquidApp {
       this.fluidField.addShake(intensity)
       this.feedback.pulse(0.35 + intensity * 0.5)
     })
+
+    if (await this.tiltAdapter.requestAccess()) {
+      this.tiltAdapter.start(this.handleTilt)
+    }
 
     return true
   }
